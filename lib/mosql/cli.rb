@@ -62,6 +62,10 @@ module MoSQL
         opts.on("--mongo [mongouri]", "Mongo connection string") do |uri|
           @options[:mongo] = uri
         end
+        
+        opts.on("--oplog [collection]", "Collection to use for oplog") do |collection|
+          @options[:oplog] = collection
+        end
 
         opts.on("--schema [schema]", "PostgreSQL 'schema' to namespace tables") do |schema|
           @options[:schema] = schema
@@ -145,6 +149,9 @@ module MoSQL
 
     # Helpers
 
+    def oplog
+      @mongo['local'][options[:oplog] ||'oplog.rs']
+    end
     def collection_for_ns(ns)
       dbname, collection = ns.split(".", 2)
       @mongo.db(dbname).collection(collection)
@@ -189,7 +196,7 @@ module MoSQL
     def initial_import
       @schemamap.create_schema(@sql.db, !options[:no_drop_tables])
 
-      start_ts = @mongo['local']['oplog.rs'].find_one({}, {:sort => [['$natural', -1]]})['ts']
+      start_ts = oplog.find_one({}, {:sort => [['$natural', -1]]})['ts']
 
       want_dbs = @schemamap.all_mongo_dbs & @mongo.database_names
       want_dbs.each do |dbname|
